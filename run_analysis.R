@@ -1,4 +1,3 @@
-library(dplyr)
 setwd("/Users/lulu/R_Coursera/R_Programming/course3/course_project")
 fileUrl1 <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
 download.file(fileUrl1, destfile = "dataset.zip", method = "curl")
@@ -11,7 +10,8 @@ unzip("dataset.zip")
 # Read features to featurenames
 path_features <- "/Users/lulu/R_Coursera/R_Programming/course3/course_project/UCI HAR Dataset/features.txt"
 features <- read.table(path_features, header=FALSE)
-featurenames <- as.character(features[,2])
+featurenames <- tolower(as.character(features[,2]))
+extracted <- grep("-mean[^f]|-std",featurenames)
 
 # Read activity labels to a data frame called activity
 path_activity <- "/Users/lulu/R_Coursera/R_Programming/course3/course_project/UCI HAR Dataset/activity_labels.txt"
@@ -45,20 +45,25 @@ subjecttrain <-read.table(path_subjecttrain, header=FALSE, col.names="subject")
 dim(subjecttrain)
 
 # Combine test and train datasets
-DT_test <- cbind(subjecttest, ytest,xtest)
+library(dplyr)
 
-DT_train <- cbind(subjecttrain, ytrain, xtrain)
-
+DT_test <- cbind(xtest, ytest, subjecttest)
+DT_train <- cbind(xtrain, ytrain, subjecttrain)
 DT1 <- rbind(DT_test, DT_train)
 
 # Extract columns containing "mean" or "std" to a new data frame DT2
-DT2 <- DT1[,c(1,2,grep("mean|std", names(DT1)))]
+DT2 <- cbind(DT1[,extracted], DT1[, c("classlabel", "subject")])
+colnames(DT2) <- c(featurenames[extracted], "classlabel", "subject")
+colnames(DT2)
 
 # Merge data frames activity and DT2 to label the activities
 DT3 <- full_join(DT2, activity, by="classlabel")
 
-# Reorder DT3 to generate DT4
-DT4 <- DT3[c(1,2,82,3:81)]
+# Clean up the column names and reorder DT3 to generate DT4
+colnames(DT3) <- gsub("[[:punct:]]", "", colnames(DT3))
+colnames(DT3) <- gsub("bodybody", "body", colnames(DT3))
+colnames(DT3)
+DT4 <- DT3
 
 # Group DT4 by activity and subject and summarise all the variables by the mean. 
 DT5 <- DT4%>%group_by(activity, subject)%>%summarise_all(mean)
